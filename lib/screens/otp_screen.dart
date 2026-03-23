@@ -52,64 +52,91 @@ class _OtpScreenState extends State<OtpScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isWide = MediaQuery.of(context).size.width >= 900;
+    final contentWidth = isWide ? 460.0 : double.infinity;
+    final sidePadding = isWide ? 24.0 : 20.0;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Verificacion 2FA'),
-        backgroundColor: AppColors.primaryBlue,
+        backgroundColor: AppColors.primaryDark,
         foregroundColor: Colors.white,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Ingresa el codigo enviado a ${widget.challenge.maskedEmail}',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _codeCtrl,
-              maxLength: 6,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: 'Codigo OTP',
-                counterText: '',
-                prefixIcon: const Icon(Icons.key),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'El codigo expira en ${widget.challenge.otpExpiresIn ~/ 60} minutos.',
-              style: const TextStyle(color: AppColors.textGray600),
-            ),
-            const Spacer(),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _verify,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryBlue,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      body: Container(
+        color: AppColors.bgSlate50,
+        child: SingleChildScrollView(
+          padding: EdgeInsets.symmetric(horizontal: sidePadding, vertical: 24),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: contentWidth),
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.cardBorder),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.04),
+                      blurRadius: 14,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
                 ),
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Text(
-                        'Confirmar acceso',
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Ingresa el codigo enviado a ${widget.challenge.maskedEmail}',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _codeCtrl,
+                      maxLength: 6,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: 'Codigo OTP',
+                        counterText: '',
+                        prefixIcon: const Icon(Icons.key),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'El codigo expira en ${widget.challenge.otpExpiresIn ~/ 60} minutos.',
+                      style: const TextStyle(color: AppColors.textGray600),
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _verify,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryBlue,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text(
+                                'Confirmar acceso',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ],
+          ),
         ),
       ),
     );

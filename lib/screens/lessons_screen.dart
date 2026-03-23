@@ -31,105 +31,117 @@ class _LessonsScreenState extends State<LessonsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isWide = MediaQuery.of(context).size.width >= 1000;
+    final contentWidth = isWide ? 920.0 : double.infinity;
+    final sidePadding = isWide ? 24.0 : 16.0;
+
     return Scaffold(
       body: Column(
         children: [
           _buildHeader(),
           Expanded(
-            child: FutureBuilder<ModuleLessonsResponse>(
-              future: _lessonsFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return Center(child: Text('Error al cargar lecciones: ${snapshot.error}'));
-                }
+            child: Container(
+              color: AppColors.bgSlate100,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: contentWidth),
+                  child: FutureBuilder<ModuleLessonsResponse>(
+                    future: _lessonsFuture,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      if (snapshot.hasError) {
+                        return Center(child: Text('Error al cargar lecciones: ${snapshot.error}'));
+                      }
 
-                final module = snapshot.data?.module ?? widget.module;
-                final lessons = snapshot.data?.lessons ?? Lesson.getSampleData();
+                      final module = snapshot.data?.module ?? widget.module;
+                      final lessons = snapshot.data?.lessons ?? Lesson.getSampleData();
 
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      if (module.dueToChecklist)
-                        Container(
-                          margin: const EdgeInsets.only(bottom: 16),
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: AppColors.bgRed50,
-                            border: Border.all(color: AppColors.borderRed300, width: 2),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: const [
-                              Icon(Icons.warning, color: AppColors.statusRed, size: 20),
-                              SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  'Este modulo es requerido por el checklist. Completa las lecciones y el quiz.',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFF991B1B),
+                      return SingleChildScrollView(
+                        padding: EdgeInsets.symmetric(horizontal: sidePadding, vertical: 20),
+                        child: Column(
+                          children: [
+                            if (module.dueToChecklist)
+                              Container(
+                                margin: const EdgeInsets.only(bottom: 16),
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: AppColors.bgRed50,
+                                  border: Border.all(color: AppColors.borderRed300, width: 2),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: const [
+                                    Icon(Icons.warning, color: AppColors.statusRed, size: 20),
+                                    SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        'Este modulo es requerido por el checklist. Completa las lecciones y el quiz.',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Color(0xFF991B1B),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ...lessons.asMap().entries.map((entry) {
+                              final index = entry.key;
+                              final lesson = entry.value;
+                              return _buildLessonCard(context, lesson, index + 1, module);
+                            }).toList(),
+                            const SizedBox(height: 24),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  if (!SessionManager.instance.hasPermission('training.quiz')) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('No tienes permiso para realizar quizzes')),
+                                    );
+                                    return;
+                                  }
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => QuizScreen(module: module),
+                                    ),
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.moduleAmber,
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
+                                  elevation: 4,
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: const [
+                                    Icon(Icons.emoji_events, size: 22),
+                                    SizedBox(width: 12),
+                                    Text(
+                                      'Realizar Evaluacion Final',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                      ...lessons.asMap().entries.map((entry) {
-                        final index = entry.key;
-                        final lesson = entry.value;
-                        return _buildLessonCard(context, lesson, index + 1, module);
-                      }).toList(),
-                      const SizedBox(height: 24),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            if (!SessionManager.instance.hasPermission('training.quiz')) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('No tienes permiso para realizar quizzes')),
-                              );
-                              return;
-                            }
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => QuizScreen(module: module),
-                              ),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.moduleAmber,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
                             ),
-                            elevation: 4,
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: const [
-                              Icon(Icons.emoji_events, size: 22),
-                              SizedBox(width: 12),
-                              Text(
-                                'Realizar Evaluacion Final',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
+                          ],
                         ),
-                      ),
-                    ],
+                      );
+                    },
                   ),
-                );
-              },
+                ),
+              ),
             ),
           ),
         ],
@@ -145,9 +157,9 @@ class _LessonsScreenState extends State<LessonsScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(0xFF1D4ED8),
+            Color(0xFF1E3A8A),
             Color(0xFF2563EB),
-            Color(0xFF0891B2),
+            Color(0xFF0E7490),
           ],
         ),
       ),
@@ -207,7 +219,7 @@ class _LessonsScreenState extends State<LessonsScreen> {
                         Text(
                           module.title,
                           style: const TextStyle(
-                            color: Colors.white,
+                            color: AppColors.textOnDark,
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
                           ),
@@ -216,7 +228,7 @@ class _LessonsScreenState extends State<LessonsScreen> {
                         Text(
                           module.description,
                           style: const TextStyle(
-                            color: Color(0xFFBFDBFE),
+                            color: AppColors.textOnDarkMuted,
                             fontSize: 13,
                           ),
                         ),
@@ -224,7 +236,7 @@ class _LessonsScreenState extends State<LessonsScreen> {
                         Text(
                           '${module.lessons} lecciones',
                           style: const TextStyle(
-                            color: Color(0xFF93C5FD),
+                            color: AppColors.textOnDarkMuted,
                             fontSize: 12,
                           ),
                         ),

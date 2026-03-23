@@ -30,50 +30,62 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isWide = MediaQuery.of(context).size.width >= 1000;
+    final contentWidth = isWide ? 920.0 : double.infinity;
+    final sidePadding = isWide ? 24.0 : 16.0;
+
     return Scaffold(
       body: Column(
         children: [
           _buildHeader(context),
           Expanded(
-            child: FutureBuilder<List<ChecklistSection>>(
-              future: _sectionsFuture,
-              builder: (context, sectionSnap) {
-                if (sectionSnap.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (sectionSnap.hasError) {
-                  return Center(child: Text('Error al cargar checklist: ${sectionSnap.error}'));
-                }
-                final sections = sectionSnap.data ?? ChecklistSection.getSampleData();
+            child: Container(
+              color: AppColors.bgSlate100,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: contentWidth),
+                  child: FutureBuilder<List<ChecklistSection>>(
+                    future: _sectionsFuture,
+                    builder: (context, sectionSnap) {
+                      if (sectionSnap.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      if (sectionSnap.hasError) {
+                        return Center(child: Text('Error al cargar checklist: ${sectionSnap.error}'));
+                      }
+                      final sections = sectionSnap.data ?? ChecklistSection.getSampleData();
 
-                return FutureBuilder<List<Module>>(
-                  future: _modulesFuture,
-                  builder: (context, moduleSnap) {
-                    final modules = moduleSnap.data ?? Module.getSampleData();
-                    return SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildInfoBox(),
-                          const SizedBox(height: 16),
-                          ...sections.map((section) {
-                            final module = modules.firstWhere(
-                              (m) => section.moduleId != null
-                                  ? m.id == section.moduleId
-                                  : m.checklistSectionId == section.id,
-                              orElse: () => modules.first,
-                            );
-                            return _buildSectionCard(context, section, module);
-                          }).toList(),
-                          const SizedBox(height: 16),
-                          _buildBottomInfo(),
-                        ],
-                      ),
-                    );
-                  },
-                );
-              },
+                      return FutureBuilder<List<Module>>(
+                        future: _modulesFuture,
+                        builder: (context, moduleSnap) {
+                          final modules = moduleSnap.data ?? Module.getSampleData();
+                          return SingleChildScrollView(
+                            padding: EdgeInsets.symmetric(horizontal: sidePadding, vertical: 20),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildInfoBox(),
+                                const SizedBox(height: 16),
+                                ...sections.map((section) {
+                                  final module = modules.firstWhere(
+                                    (m) => section.moduleId != null
+                                        ? m.id == section.moduleId
+                                        : m.checklistSectionId == section.id,
+                                    orElse: () => modules.first,
+                                  );
+                                  return _buildSectionCard(context, section, module);
+                                }).toList(),
+                                const SizedBox(height: 16),
+                                _buildBottomInfo(),
+                              ],
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ),
             ),
           ),
         ],
@@ -88,9 +100,9 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(0xFF1D4ED8),
+            Color(0xFF1E3A8A),
             Color(0xFF2563EB),
-            Color(0xFF0891B2),
+            Color(0xFF0E7490),
           ],
         ),
       ),
@@ -122,7 +134,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
               const Text(
                 'Checklist - Objetivo 2',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: AppColors.textOnDark,
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                 ),
@@ -131,7 +143,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
               const Text(
                 'Evaluacion de requisitos legales SST',
                 style: TextStyle(
-                  color: Color(0xFFBFDBFE),
+                  color: AppColors.textOnDarkMuted,
                   fontSize: 14,
                 ),
               ),

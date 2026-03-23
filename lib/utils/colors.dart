@@ -4,6 +4,7 @@ import "package:flutter/material.dart";
 class AppColors {
   // Primary brand / action
   static const Color primaryBlue = Color(0xFF2563EB);
+  static const Color primaryDark = Color(0xFF1E40AF);
 
   // Grays
   static const Color textGray900 = Color(0xFF111827);
@@ -14,10 +15,16 @@ class AppColors {
   static const Color textGray400 = Color(0xFF9CA3AF);
   static const Color borderGray200 = Color(0xFFE5E7EB);
   static const Color bgGray100 = Color(0xFFF3F4F6);
+  static const Color bgSlate50 = Color(0xFFF8FAFC);
+  static const Color bgSlate100 = Color(0xFFF1F5F9);
+  static const Color bgSlate200 = Color(0xFFE2E8F0);
+  static const Color cardBorder = Color(0xFFE2E8F0);
 
   // Blues
   static const Color bgBlue50 = Color(0xFFEFF6FF);
   static const Color borderBlue200 = Color(0xFFBFDBFE);
+  static const Color textOnDark = Color(0xFFF8FAFC);
+  static const Color textOnDarkMuted = Color(0xFFBFDBFE);
 
   // Reds / alerts
   static const Color statusRed = Color(0xFFDC2626);

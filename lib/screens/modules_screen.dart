@@ -25,39 +25,51 @@ class _ModulesScreenState extends State<ModulesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isWide = MediaQuery.of(context).size.width >= 1000;
+    final contentWidth = isWide ? 920.0 : double.infinity;
+    final sidePadding = isWide ? 24.0 : 16.0;
+
     return Scaffold(
       body: Column(
         children: [
           _buildHeader(context),
           Expanded(
-            child: FutureBuilder<List<Module>>(
-              future: _modulesFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return Center(child: Text('Error al cargar modulos: ${snapshot.error}'));
-                }
-                final modules = snapshot.data ?? Module.getSampleData();
-                if (modules.isEmpty) {
-                  return const Center(child: Text('No tienes modulos asignados aun.'));
-                }
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: modules
-                        .map(
-                          (module) => _buildModuleCard(
-                            context,
-                            module,
-                            isHighlighted: widget.selectedModule?.id == module.id,
-                          ),
-                        )
-                        .toList(),
+            child: Container(
+              color: AppColors.bgSlate100,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: contentWidth),
+                  child: FutureBuilder<List<Module>>(
+                    future: _modulesFuture,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      if (snapshot.hasError) {
+                        return Center(child: Text('Error al cargar modulos: ${snapshot.error}'));
+                      }
+                      final modules = snapshot.data ?? Module.getSampleData();
+                      if (modules.isEmpty) {
+                        return const Center(child: Text('No tienes modulos asignados aun.'));
+                      }
+                      return SingleChildScrollView(
+                        padding: EdgeInsets.symmetric(horizontal: sidePadding, vertical: 20),
+                        child: Column(
+                          children: modules
+                              .map(
+                                (module) => _buildModuleCard(
+                                  context,
+                                  module,
+                                  isHighlighted: widget.selectedModule?.id == module.id,
+                                ),
+                              )
+                              .toList(),
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
+                ),
+              ),
             ),
           ),
         ],
@@ -72,9 +84,9 @@ class _ModulesScreenState extends State<ModulesScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(0xFF1D4ED8),
+            Color(0xFF1E3A8A),
             Color(0xFF2563EB),
-            Color(0xFF0891B2),
+            Color(0xFF0E7490),
           ],
         ),
       ),
@@ -106,7 +118,7 @@ class _ModulesScreenState extends State<ModulesScreen> {
               const Text(
                 'Capacitaciones',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: AppColors.textOnDark,
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                 ),
@@ -115,7 +127,7 @@ class _ModulesScreenState extends State<ModulesScreen> {
               const Text(
                 'Completa los modulos y aprueba las evaluaciones',
                 style: TextStyle(
-                  color: Color(0xFFBFDBFE),
+                  color: AppColors.textOnDarkMuted,
                   fontSize: 14,
                 ),
               ),

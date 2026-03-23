@@ -9,6 +9,7 @@ import '../models/auth.dart';
 import 'checklist_screen.dart';
 import 'modules_screen.dart';
 import 'module_admin_screen.dart';
+import 'chat_list_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({Key? key}) : super(key: key);
@@ -34,61 +35,74 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isWide = MediaQuery.of(context).size.width >= 1100;
+    final contentWidth = isWide ? 980.0 : double.infinity;
+    final sidePadding = isWide ? 24.0 : 16.0;
+    final gridCount = isWide ? 3 : 2;
+
     return Scaffold(
       body: Column(
         children: [
           _buildHeader(),
           Expanded(
-            child: FutureBuilder<List<Module>>(
-              future: _modulesFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return Center(child: Text('Error al cargar modulos: ${snapshot.error}'));
-                }
-                final modules = snapshot.data ?? Module.getSampleData();
-                final requiredModules = modules.where((m) => m.dueToChecklist && !m.quizCompleted).toList();
+            child: Container(
+              color: AppColors.bgSlate100,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: contentWidth),
+                  child: FutureBuilder<List<Module>>(
+                    future: _modulesFuture,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      if (snapshot.hasError) {
+                        return Center(child: Text('Error al cargar modulos: ${snapshot.error}'));
+                      }
+                      final modules = snapshot.data ?? Module.getSampleData();
+                      final requiredModules = modules.where((m) => m.dueToChecklist && !m.quizCompleted).toList();
 
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildChecklistSummary(),
-                      const SizedBox(height: 24),
-                      const Text(
-                        'Acceso Rapido',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textGray900,
+                      return SingleChildScrollView(
+                        padding: EdgeInsets.symmetric(horizontal: sidePadding, vertical: 20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildChecklistSummary(),
+                            const SizedBox(height: 24),
+                            const Text(
+                              'Acceso Rapido',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textGray900,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            _buildQuickAccessGrid(context, gridCount),
+                            const SizedBox(height: 24),
+                            const Text(
+                              'Capacitaciones Requeridas',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textGray900,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            if (requiredModules.isEmpty)
+                              const Text(
+                                'No hay capacitaciones obligatorias pendientes.',
+                                style: TextStyle(color: AppColors.textGray600),
+                              )
+                            else
+                              ...requiredModules.map((m) => _buildRequiredModule(context, m)),
+                          ],
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      _buildQuickAccessGrid(context),
-                      const SizedBox(height: 24),
-                      const Text(
-                        'Capacitaciones Requeridas',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textGray900,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      if (requiredModules.isEmpty)
-                        const Text(
-                          'No hay capacitaciones obligatorias pendientes.',
-                          style: TextStyle(color: AppColors.textGray600),
-                        )
-                      else
-                        ...requiredModules.map((m) => _buildRequiredModule(context, m)),
-                    ],
+                      );
+                    },
                   ),
-                );
-              },
+                ),
+              ),
             ),
           ),
         ],
@@ -103,9 +117,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(0xFF1D4ED8),
+            Color(0xFF1E3A8A),
             Color(0xFF2563EB),
-            Color(0xFF0891B2),
+            Color(0xFF0E7490),
           ],
         ),
       ),
@@ -129,7 +143,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           const Text(
                             'Sistema SST',
                             style: TextStyle(
-                              color: Colors.white,
+                              color: AppColors.textOnDark,
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
                             ),
@@ -137,7 +151,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           Text(
                             _user?.email ?? 'Gestion Integral',
                             style: const TextStyle(
-                              color: Color(0xFFBFDBFE),
+                              color: AppColors.textOnDarkMuted,
                               fontSize: 14,
                             ),
                           ),
@@ -159,14 +173,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             const Text(
                               'Usuario',
                               style: TextStyle(
-                                color: Color(0xFFBFDBFE),
+                                color: AppColors.textOnDarkMuted,
                                 fontSize: 10,
                               ),
                             ),
                             Text(
                               _user?.name ?? 'Invitado',
                               style: const TextStyle(
-                                color: Colors.white,
+                                color: AppColors.textOnDark,
                                 fontSize: 14,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -174,7 +188,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             Text(
                               (_user?.roles ?? []).join(', '),
                               style: const TextStyle(
-                                color: Color(0xFFBFDBFE),
+                                color: AppColors.textOnDarkMuted,
                                 fontSize: 10,
                               ),
                             ),
@@ -258,7 +272,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Text(
             title,
             style: const TextStyle(
-              color: Color(0xFFBFDBFE),
+              color: AppColors.textOnDarkMuted,
               fontSize: 12,
             ),
           ),
@@ -339,8 +353,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildQuickAccessGrid(BuildContext context) {
+  Widget _buildQuickAccessGrid(BuildContext context, int crossAxisCount) {
     final items = <Widget>[];
+    items.add(
+      _buildQuickAccessCard(
+        context,
+        icon: Icons.forum,
+        color: AppColors.primaryBlue,
+        title: 'Mensajes',
+        subtitle: 'Chat por roles',
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const ChatListScreen(),
+            ),
+          );
+        },
+      ),
+    );
     if (SessionManager.instance.hasPermission('checklist.view')) {
       items.add(
         _buildQuickAccessCard(
@@ -407,7 +438,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return const Text('No hay accesos rapidos para este rol');
     }
     return GridView.count(
-      crossAxisCount: 2,
+      crossAxisCount: crossAxisCount,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing: 12,

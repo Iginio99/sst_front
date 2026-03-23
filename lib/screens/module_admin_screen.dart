@@ -31,6 +31,10 @@ class _ModuleAdminScreenState extends State<ModuleAdminScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isWide = MediaQuery.of(context).size.width >= 1100;
+    final contentWidth = isWide ? 980.0 : double.infinity;
+    final sidePadding = isWide ? 24.0 : 16.0;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Gestion de modulos'),
@@ -44,36 +48,44 @@ class _ModuleAdminScreenState extends State<ModuleAdminScreen> {
               child: const Icon(Icons.add, color: Colors.white),
             )
           : null,
-      body: FutureBuilder<List<Module>>(
-        future: _modulesFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final modules = snapshot.data ?? [];
-          if (modules.isEmpty) {
-            return const Center(child: Text('No hay modulos asignados para este rol.'));
-          }
-          return RefreshIndicator(
-            onRefresh: () async {
-              setState(() {
-                _modulesFuture = _trainingService.fetchModules(onError: _showError);
-              });
-              await _modulesFuture;
-            },
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: modules.length,
-              itemBuilder: (context, index) => _ModuleTile(
-                module: modules[index],
-                onEdit: _canManage ? () => _openModuleForm(context, module: modules[index]) : null,
-                onDelete: _canManage ? () => _confirmDelete(modules[index]) : null,
-                onAssign: _canAssign ? () => _openAssignment(modules[index]) : null,
-                onProgress: _canMonitor ? () => _openProgress(modules[index]) : null,
-              ),
+      body: Container(
+        color: AppColors.bgSlate100,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: contentWidth),
+            child: FutureBuilder<List<Module>>(
+              future: _modulesFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final modules = snapshot.data ?? [];
+                if (modules.isEmpty) {
+                  return const Center(child: Text('No hay modulos asignados para este rol.'));
+                }
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    setState(() {
+                      _modulesFuture = _trainingService.fetchModules(onError: _showError);
+                    });
+                    await _modulesFuture;
+                  },
+                  child: ListView.builder(
+                    padding: EdgeInsets.symmetric(horizontal: sidePadding, vertical: 20),
+                    itemCount: modules.length,
+                    itemBuilder: (context, index) => _ModuleTile(
+                      module: modules[index],
+                      onEdit: _canManage ? () => _openModuleForm(context, module: modules[index]) : null,
+                      onDelete: _canManage ? () => _confirmDelete(modules[index]) : null,
+                      onAssign: _canAssign ? () => _openAssignment(modules[index]) : null,
+                      onProgress: _canMonitor ? () => _openProgress(modules[index]) : null,
+                    ),
+                  ),
+                );
+              },
             ),
-          );
-        },
+          ),
+        ),
       ),
     );
   }

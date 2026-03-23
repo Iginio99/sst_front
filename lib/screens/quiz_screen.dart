@@ -66,6 +66,10 @@ class _QuizScreenState extends State<QuizScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isWide = MediaQuery.of(context).size.width >= 900;
+    final contentWidth = isWide ? 760.0 : double.infinity;
+    final sidePadding = isWide ? 24.0 : 16.0;
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -80,8 +84,13 @@ class _QuizScreenState extends State<QuizScreen> {
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: _buildContent(),
+            padding: EdgeInsets.symmetric(horizontal: sidePadding, vertical: 24),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: contentWidth),
+                child: _buildContent(),
+              ),
+            ),
           ),
         ),
       ),

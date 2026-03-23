@@ -31,49 +31,61 @@ class _ChecklistDetailScreenState extends State<ChecklistDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isWide = MediaQuery.of(context).size.width >= 1000;
+    final contentWidth = isWide ? 920.0 : double.infinity;
+    final sidePadding = isWide ? 24.0 : 16.0;
+
     return Scaffold(
       body: Column(
         children: [
           _buildHeader(context),
           Expanded(
-            child: FutureBuilder<ChecklistDetailResponse>(
-              future: _detailFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return Center(child: Text('Error al cargar: ${snapshot.error}'));
-                }
-                final detail = snapshot.data ??
-                    ChecklistDetailResponse(
-                      section: widget.section,
-                      items: ChecklistItem.getSampleData(),
-                    );
+            child: Container(
+              color: AppColors.bgSlate100,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: contentWidth),
+                  child: FutureBuilder<ChecklistDetailResponse>(
+                    future: _detailFuture,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      if (snapshot.hasError) {
+                        return Center(child: Text('Error al cargar: ${snapshot.error}'));
+                      }
+                      final detail = snapshot.data ??
+                          ChecklistDetailResponse(
+                            section: widget.section,
+                            items: ChecklistItem.getSampleData(),
+                          );
 
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildProgressCard(detail.section),
-                      const SizedBox(height: 16),
-                      _buildModuleLink(widget.module),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Requisitos evaluados',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textGray900,
+                      return SingleChildScrollView(
+                        padding: EdgeInsets.symmetric(horizontal: sidePadding, vertical: 20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildProgressCard(detail.section),
+                            const SizedBox(height: 16),
+                            _buildModuleLink(widget.module),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Requisitos evaluados',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textGray900,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            ...detail.items.map(_buildRequirementItem).toList(),
+                          ],
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      ...detail.items.map(_buildRequirementItem).toList(),
-                    ],
+                      );
+                    },
                   ),
-                );
-              },
+                ),
+              ),
             ),
           ),
         ],
@@ -90,9 +102,9 @@ class _ChecklistDetailScreenState extends State<ChecklistDetailScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(0xFF1D4ED8),
+            Color(0xFF1E3A8A),
             Color(0xFF2563EB),
-            Color(0xFF0891B2),
+            Color(0xFF0E7490),
           ],
         ),
       ),
@@ -153,7 +165,7 @@ class _ChecklistDetailScreenState extends State<ChecklistDetailScreen> {
                         Text(
                           section.title,
                           style: const TextStyle(
-                            color: Colors.white,
+                            color: AppColors.textOnDark,
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
                           ),
@@ -162,7 +174,7 @@ class _ChecklistDetailScreenState extends State<ChecklistDetailScreen> {
                         Text(
                           module.title,
                           style: const TextStyle(
-                            color: Color(0xFFBFDBFE),
+                            color: AppColors.textOnDarkMuted,
                             fontSize: 14,
                           ),
                         ),

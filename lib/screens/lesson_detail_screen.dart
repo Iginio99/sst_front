@@ -57,6 +57,9 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
   Widget build(BuildContext context) {
     final lesson = widget.lesson;
     final module = widget.module;
+    final isWide = MediaQuery.of(context).size.width >= 1000;
+    final contentWidth = isWide ? 880.0 : double.infinity;
+    final sidePadding = isWide ? 24.0 : 16.0;
 
     return Scaffold(
       body: Column(
@@ -159,116 +162,124 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
             ],
           ),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      _buildTag(
-                        icon: Icons.access_time,
-                        label: lesson.duration,
-                        color: AppColors.primaryBlue,
-                      ),
-                      _buildTag(
-                        icon: Icons.shield,
-                        label: module.title,
-                        color: module.color,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    lesson.title,
-                    style: const TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textGray900,
-                      height: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'El liderazgo visible en seguridad y salud en el trabajo es fundamental para crear una cultura preventiva efectiva. Los lideres deben demostrar compromiso real con la SST mediante acciones concretas y participacion activa.',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: AppColors.textGray700,
-                      height: 1.6,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.bgBlue50,
-                      border: const Border(
-                        left: BorderSide(color: AppColors.primaryBlue, width: 4),
-                      ),
-                      borderRadius: const BorderRadius.only(
-                        topRight: Radius.circular(8),
-                        bottomRight: Radius.circular(8),
-                      ),
-                    ),
-                    child: Row(
+            child: Container(
+              color: AppColors.bgSlate50,
+              child: SingleChildScrollView(
+                padding: EdgeInsets.symmetric(horizontal: sidePadding, vertical: 24),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: contentWidth),
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Icon(Icons.lightbulb, color: AppColors.primaryBlue, size: 20),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'Concepto clave: el liderazgo en SST no es solo cumplir con requisitos legales, sino inspirar y motivar a todo el equipo a trabajar de forma segura.',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Color(0xFF1E40AF),
-                              height: 1.5,
+                      children: [
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            _buildTag(
+                              icon: Icons.access_time,
+                              label: lesson.duration,
+                              color: AppColors.primaryBlue,
+                            ),
+                            _buildTag(
+                              icon: Icons.shield,
+                              label: module.title,
+                              color: module.color,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        Text(
+                          lesson.title,
+                          style: const TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textGray900,
+                            height: 1.2,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        const Text(
+                          'El liderazgo visible en seguridad y salud en el trabajo es fundamental para crear una cultura preventiva efectiva. Los lideres deben demostrar compromiso real con la SST mediante acciones concretas y participacion activa.',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: AppColors.textGray700,
+                            height: 1.6,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppColors.bgBlue50,
+                            border: const Border(
+                              left: BorderSide(color: AppColors.primaryBlue, width: 4),
+                            ),
+                            borderRadius: const BorderRadius.only(
+                              topRight: Radius.circular(8),
+                              bottomRight: Radius.circular(8),
                             ),
                           ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: const [
+                              Icon(Icons.lightbulb, color: AppColors.primaryBlue, size: 20),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'Concepto clave: el liderazgo en SST no es solo cumplir con requisitos legales, sino inspirar y motivar a todo el equipo a trabajar de forma segura.',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Color(0xFF1E40AF),
+                                    height: 1.5,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 32),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: _saving || _isCompleted ? null : _markCompleted,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.statusGreen,
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  elevation: 2,
+                                ),
+                                child: _saving
+                                    ? const SizedBox(
+                                        height: 20,
+                                        width: 20,
+                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                      )
+                                    : Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: const [
+                                          Icon(Icons.check, size: 20),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            'Marcar como completada',
+                                            style: TextStyle(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 32),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: _saving || _isCompleted ? null : _markCompleted,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.statusGreen,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            elevation: 2,
-                          ),
-                          child: _saving
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                )
-                              : Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: const [
-                                    Icon(Icons.check, size: 20),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      'Marcar como completada',
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                ),
               ),
             ),
           ),
