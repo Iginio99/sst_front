@@ -19,11 +19,15 @@ class LessonAdminScreen extends StatefulWidget {
   State<LessonAdminScreen> createState() => _LessonAdminScreenState();
 }
 
+enum _FeedbackTone { info, success, error }
+
 class _LessonAdminScreenState extends State<LessonAdminScreen> {
   final _trainingService = TrainingService();
   late Future<ModuleLessonsResponse> _lessonsFuture;
   bool _busy = false;
   String? _busyLabel;
+  _FeedbackTone _feedbackTone = _FeedbackTone.info;
+  String? _feedbackMessage;
 
   @override
   void initState() {
@@ -54,9 +58,14 @@ class _LessonAdminScreenState extends State<LessonAdminScreen> {
             onPressed: _busy
                 ? null
                 : () {
+                    _setFeedback(
+                      _FeedbackTone.info,
+                      'Recargando la lista de lecciones del modulo...',
+                    );
                     setState(_reload);
                   },
             icon: const Icon(Icons.refresh),
+            tooltip: 'Actualizar',
           ),
           IconButton(
             onPressed: _busy ? null : () => _openLessonForm(),
@@ -76,42 +85,53 @@ class _LessonAdminScreenState extends State<LessonAdminScreen> {
 
               final lessons = snapshot.data?.lessons ?? const <Lesson>[];
               if (lessons.isEmpty) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.library_books_outlined,
-                          size: 52,
-                          color: AppColors.textGray400,
-                        ),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'Este modulo todavia no tiene lecciones.',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        FilledButton.icon(
-                          onPressed: _busy ? null : _openLessonForm,
-                          icon: const Icon(Icons.add),
-                          label: const Text('Crear primera leccion'),
-                        ),
-                      ],
+                return ListView(
+                  padding: const EdgeInsets.all(24),
+                  children: [
+                    if (_feedbackMessage != null) _buildFeedbackCard(),
+                    const SizedBox(height: 48),
+                    const Icon(
+                      Icons.library_books_outlined,
+                      size: 52,
+                      color: AppColors.textGray400,
                     ),
-                  ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Este modulo todavia no tiene lecciones.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Crea la primera leccion y luego sube portada y contenido para confirmar el flujo.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.textGray600,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      onPressed: _busy ? null : _openLessonForm,
+                      icon: const Icon(Icons.add),
+                      label: const Text('Crear primera leccion'),
+                    ),
+                  ],
                 );
               }
 
               return ListView.builder(
                 padding: const EdgeInsets.all(16),
-                itemCount: lessons.length,
+                itemCount: lessons.length + (_feedbackMessage == null ? 0 : 1),
                 itemBuilder: (context, index) {
-                  final lesson = lessons[index];
+                  if (_feedbackMessage != null && index == 0) {
+                    return _buildFeedbackCard();
+                  }
+                  final lesson =
+                      lessons[_feedbackMessage == null ? index : index - 1];
                   return Card(
                     margin: const EdgeInsets.only(bottom: 12),
                     child: Padding(
@@ -278,7 +298,19 @@ class _LessonAdminScreenState extends State<LessonAdminScreen> {
                       children: [
                         const CircularProgressIndicator(),
                         const SizedBox(height: 12),
-                        Text(_busyLabel ?? 'Procesando...'),
+                        Text(
+                          _busyLabel ?? 'Procesando...',
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'No cierres esta pantalla hasta que termine la operacion.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textGray600,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -378,6 +410,7 @@ class _LessonAdminScreenState extends State<LessonAdminScreen> {
                           controller: externalUrlCtrl,
                           decoration: const InputDecoration(
                             labelText: 'URL externa',
+                            hintText: 'https://...',
                           ),
                         ),
                       TextField(
@@ -421,28 +454,33 @@ class _LessonAdminScreenState extends State<LessonAdminScreen> {
                       : externalUrlCtrl.text.trim(),
                 );
 
-                final result = lesson == null
-                    ? await _trainingService.createLesson(
-                        widget.module.id,
-                        payload,
-                      )
-                    : await _trainingService.updateLesson(lesson.id, payload);
+                final result = await _runBusy(
+                  lesson == null
+                      ? 'Guardando nueva leccion...'
+                      : 'Actualizando leccion...',
+                  () => lesson == null
+                      ? _trainingService.createLesson(widget.module.id, payload)
+                      : _trainingService.updateLesson(lesson.id, payload),
+                );
                 if (!mounted) {
                   return;
                 }
                 if (!result.success) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        result.errorMessage ?? 'No se pudo guardar la leccion.',
-                      ),
-                    ),
+                  _setFeedback(
+                    _FeedbackTone.error,
+                    result.errorMessage ?? 'No se pudo guardar la leccion.',
                   );
                   return;
                 }
+                _setFeedback(
+                  _FeedbackTone.success,
+                  lesson == null
+                      ? 'La leccion "${payload.title}" se creo correctamente. Ahora puedes subir portada y contenido.'
+                      : 'La leccion "${payload.title}" se actualizo correctamente.',
+                );
                 Navigator.of(context).pop(true);
               },
-              child: const Text('Guardar'),
+              child: Text(lesson == null ? 'Crear' : 'Guardar cambios'),
             ),
           ],
         );
@@ -459,13 +497,28 @@ class _LessonAdminScreenState extends State<LessonAdminScreen> {
       allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp'],
     );
     if (file == null) {
+      _setFeedback(
+        _FeedbackTone.info,
+        'No se selecciono ninguna portada. La operacion fue cancelada.',
+      );
       return;
     }
+    _setFeedback(
+      _FeedbackTone.info,
+      'Portada seleccionada: ${file.name}. Se iniciara la subida para "${lesson.title}".',
+    );
     final updated = await _runBusy(
-      'Subiendo portada...',
+      'Subiendo portada: ${file.name}',
       () => _trainingService.uploadLessonCover(lesson.id, file),
     );
-    _showResult(updated.success, 'portada', updated.errorMessage);
+    _showResult(
+      updated.success,
+      updated.success
+          ? 'La portada "${file.name}" se subio correctamente para "${lesson.title}".'
+          : (updated.errorMessage ??
+                'No se pudo subir la portada "${file.name}".'),
+      updated.success ? _FeedbackTone.success : _FeedbackTone.error,
+    );
     if (updated.success) {
       setState(_reload);
     }
@@ -479,13 +532,28 @@ class _LessonAdminScreenState extends State<LessonAdminScreen> {
     };
     final file = await _pickFile(allowedExtensions: extensions);
     if (file == null) {
+      _setFeedback(
+        _FeedbackTone.info,
+        'No se selecciono ningun archivo de contenido. La operacion fue cancelada.',
+      );
       return;
     }
+    _setFeedback(
+      _FeedbackTone.info,
+      'Archivo seleccionado: ${file.name}. Se iniciara la subida para "${lesson.title}".',
+    );
     final updated = await _runBusy(
-      'Subiendo contenido...',
+      'Subiendo contenido: ${file.name}',
       () => _trainingService.uploadLessonContent(lesson.id, file),
     );
-    _showResult(updated.success, 'contenido', updated.errorMessage);
+    _showResult(
+      updated.success,
+      updated.success
+          ? 'El archivo "${file.name}" se subio correctamente en "${lesson.title}".'
+          : (updated.errorMessage ??
+                'No se pudo subir el archivo "${file.name}".'),
+      updated.success ? _FeedbackTone.success : _FeedbackTone.error,
+    );
     if (updated.success) {
       setState(_reload);
     }
@@ -496,7 +564,9 @@ class _LessonAdminScreenState extends State<LessonAdminScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Eliminar leccion'),
-        content: Text('Seguro que deseas eliminar "${lesson.title}"?'),
+        content: Text(
+          'Seguro que deseas eliminar "${lesson.title}"? Esta accion tambien quitara sus archivos asociados.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -510,13 +580,24 @@ class _LessonAdminScreenState extends State<LessonAdminScreen> {
       ),
     );
     if (confirm != true) {
+      _setFeedback(
+        _FeedbackTone.info,
+        'La eliminacion de "${lesson.title}" fue cancelada.',
+      );
       return;
     }
     final deleted = await _runBusy(
       'Eliminando leccion...',
       () => _trainingService.deleteLesson(lesson.id),
     );
-    _showResult(deleted.success, 'eliminacion', deleted.errorMessage);
+    _showResult(
+      deleted.success,
+      deleted.success
+          ? 'La leccion "${lesson.title}" se elimino correctamente.'
+          : (deleted.errorMessage ??
+                'No se pudo eliminar la leccion "${lesson.title}".'),
+      deleted.success ? _FeedbackTone.success : _FeedbackTone.error,
+    );
     if (deleted.success) {
       setState(_reload);
     }
@@ -537,6 +618,10 @@ class _LessonAdminScreenState extends State<LessonAdminScreen> {
     final file = result.files.single;
     final bytes = file.bytes ?? Uint8List(0);
     if (bytes.isEmpty) {
+      _setFeedback(
+        _FeedbackTone.error,
+        'El archivo "${file.name}" no pudo leerse o llego vacio desde el navegador.',
+      );
       return null;
     }
     return UploadFilePayload(name: file.name, bytes: bytes, path: file.path);
@@ -569,17 +654,76 @@ class _LessonAdminScreenState extends State<LessonAdminScreen> {
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
-  void _showResult(bool success, String label, [String? errorMessage]) {
+  Widget _buildFeedbackCard() {
+    final tone = _feedbackTone;
+    final bg = switch (tone) {
+      _FeedbackTone.success => const Color(0xFFECFDF3),
+      _FeedbackTone.error => const Color(0xFFFEF2F2),
+      _FeedbackTone.info => const Color(0xFFEFF6FF),
+    };
+    final border = switch (tone) {
+      _FeedbackTone.success => AppColors.statusGreen,
+      _FeedbackTone.error => AppColors.statusRed,
+      _FeedbackTone.info => AppColors.primaryBlue,
+    };
+    final icon = switch (tone) {
+      _FeedbackTone.success => Icons.check_circle,
+      _FeedbackTone.error => Icons.error_outline,
+      _FeedbackTone.info => Icons.info_outline,
+    };
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: border.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: border),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              _feedbackMessage ?? '',
+              style: const TextStyle(color: AppColors.textGray900, height: 1.4),
+            ),
+          ),
+          IconButton(
+            onPressed: () {
+              setState(() {
+                _feedbackMessage = null;
+              });
+            },
+            icon: const Icon(Icons.close, size: 18),
+            visualDensity: VisualDensity.compact,
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _setFeedback(_FeedbackTone tone, String message) {
     if (!mounted) {
       return;
     }
+    setState(() {
+      _feedbackTone = tone;
+      _feedbackMessage = message;
+    });
+  }
+
+  void _showResult(bool success, String message, _FeedbackTone tone) {
+    if (!mounted) {
+      return;
+    }
+    _setFeedback(tone, message);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          success
-              ? 'Se actualizo el $label de la leccion.'
-              : (errorMessage ?? 'No se pudo actualizar el $label.'),
-        ),
+        backgroundColor: success ? AppColors.statusGreen : AppColors.statusRed,
+        content: Text(message),
       ),
     );
   }
