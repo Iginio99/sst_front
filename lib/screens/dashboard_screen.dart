@@ -59,7 +59,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       if (snapshot.hasError) {
                         return Center(child: Text('Error al cargar modulos: ${snapshot.error}'));
                       }
-                      final modules = snapshot.data ?? Module.getSampleData();
+                      final modules = snapshot.data ?? const <Module>[];
                       final requiredModules = modules.where((m) => m.dueToChecklist && !m.quizCompleted).toList();
 
                       return SingleChildScrollView(
@@ -239,7 +239,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           final modules = snapshot.data ?? [];
                           final approved = modules.where((m) => m.quizCompleted).length;
                           return Text(
-                            '$approved/${modules.isEmpty ? 6 : modules.length}',
+                            '$approved/${modules.length}',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 24,

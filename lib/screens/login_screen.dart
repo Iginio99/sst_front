@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../models/auth.dart';
 import '../services/auth_service.dart';
 import '../services/session_service.dart';
 import '../utils/colors.dart';
-import 'dashboard_screen.dart';
+import 'home_screen.dart';
 import 'otp_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -31,7 +30,7 @@ class _LoginScreenState extends State<LoginScreen> {
         if (!mounted) return;
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const DashboardScreen()),
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
         );
       } else if (result.requiresOtp && result.challenge != null) {
         Navigator.push(

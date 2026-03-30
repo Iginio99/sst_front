@@ -4,7 +4,7 @@ import '../models/auth.dart';
 import '../services/auth_service.dart';
 import '../services/session_service.dart';
 import '../utils/colors.dart';
-import 'dashboard_screen.dart';
+import 'home_screen.dart';
 
 class OtpScreen extends StatefulWidget {
   const OtpScreen({super.key, required this.challenge});
@@ -32,7 +32,7 @@ class _OtpScreenState extends State<OtpScreen> {
       await SessionManager.instance.saveSession(auth);
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const DashboardScreen()),
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
         (route) => false,
       );
     } catch (e) {

@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../models/auth.dart';
 import '../utils/api_config.dart';
+import '../utils/user_access.dart';
 
 class SessionManager {
   SessionManager._();
@@ -22,6 +23,7 @@ class SessionManager {
   String? get accessToken => _accessToken;
   String? get refreshToken => _refreshToken;
   UserProfile? get currentUser => userNotifier.value;
+  UserAccess get access => UserAccess(userNotifier.value);
 
   Future<void> restoreSession() async {
     _accessToken = await _storage.read(key: 'access_token');
@@ -86,5 +88,9 @@ class SessionManager {
 
   bool hasPermission(String code) {
     return userNotifier.value?.permissions.contains(code) ?? false;
+  }
+
+  bool hasRole(String code) {
+    return userNotifier.value?.roles.contains(code) ?? false;
   }
 }

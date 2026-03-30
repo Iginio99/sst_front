@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import '../models/module.dart';
 import '../models/quiz.dart';
+import '../services/session_service.dart';
 import '../services/training_service.dart';
 import '../utils/colors.dart';
-import '../services/session_service.dart';
+import '../utils/responsive_breakpoints.dart';
+import '../widgets/app_state_views.dart';
+import '../widgets/desktop_content_scaffold.dart';
+import '../widgets/access_denied_view.dart';
 
 class QuizScreen extends StatefulWidget {
   final Module module;
 
-  const QuizScreen({Key? key, required this.module}) : super(key: key);
+  const QuizScreen({super.key, required this.module});
 
   @override
   State<QuizScreen> createState() => _QuizScreenState();
@@ -41,9 +45,11 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
   Future<void> _submit() async {
-    if (!SessionManager.instance.hasPermission('training.quiz')) {
+    if (!SessionManager.instance.access.canTakeQuiz) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No tienes permiso para enviar evaluaciones')),
+        const SnackBar(
+          content: Text('No tienes permiso para enviar evaluaciones'),
+        ),
       );
       return;
     }
@@ -52,21 +58,34 @@ class _QuizScreenState extends State<QuizScreen> {
     final answersPayload = _answers.entries
         .map((e) => QuizAnswerPayload(questionId: e.key, optionId: e.value))
         .toList();
-    final result = await _trainingService.submitQuiz(widget.module.id, answersPayload);
+    final result = await _trainingService.submitQuiz(
+      widget.module.id,
+      answersPayload,
+    );
     setState(() {
       _submitting = false;
       _result = result;
     });
     if (result == null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No se pudo enviar el quiz. Intenta de nuevo.')),
+        const SnackBar(
+          content: Text('No se pudo enviar el quiz. Intenta de nuevo.'),
+        ),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final access = SessionManager.instance.access;
+    if (!access.canTakeQuiz) {
+      return const AccessDeniedView(
+        title: 'Evaluacion no disponible',
+        message: 'Tu rol no debe rendir evaluaciones desde esta vista.',
+      );
+    }
     final isWide = MediaQuery.of(context).size.width >= 900;
+    final isDesktop = ResponsiveBreakpoints.isDesktop(context);
     final contentWidth = isWide ? 760.0 : double.infinity;
     final sidePadding = isWide ? 24.0 : 16.0;
 
@@ -76,19 +95,25 @@ class _QuizScreenState extends State<QuizScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFEFF6FF),
-              Colors.white,
-            ],
+            colors: [Color(0xFFEFF6FF), Colors.white],
           ),
         ),
         child: SafeArea(
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: sidePadding, vertical: 24),
+            padding: EdgeInsets.symmetric(
+              horizontal: sidePadding,
+              vertical: 24,
+            ),
             child: Center(
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: contentWidth),
-                child: _buildContent(),
+                child: isDesktop
+                    ? DesktopContentScaffold(
+                        padding: EdgeInsets.zero,
+                        sidePanel: _buildDesktopSidebar(),
+                        child: _buildContent(isDesktop: true),
+                      )
+                    : _buildContent(),
               ),
             ),
           ),
@@ -97,12 +122,16 @@ class _QuizScreenState extends State<QuizScreen> {
     );
   }
 
-  Widget _buildContent() {
+  Widget _buildContent({bool isDesktop = false}) {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const AppLoadingView(label: 'Cargando evaluacion');
     }
     if (_quiz == null) {
-      return const Center(child: Text('No hay quiz configurado para este modulo.'));
+      return const AppMessageCard(
+        title: 'Evaluacion no disponible',
+        message: 'No hay quiz configurado para este modulo.',
+        icon: Icons.quiz_outlined,
+      );
     }
     if (_result != null) {
       return _buildResult();
@@ -118,7 +147,10 @@ class _QuizScreenState extends State<QuizScreen> {
         const SizedBox(height: 16),
         _buildHeader(),
         const SizedBox(height: 24),
-        _buildProgress(questionIndex: _currentIndex, total: _quiz!.questions.length),
+        _buildProgress(
+          questionIndex: _currentIndex,
+          total: _quiz!.questions.length,
+        ),
         const SizedBox(height: 24),
         Text(
           question.prompt,
@@ -130,8 +162,9 @@ class _QuizScreenState extends State<QuizScreen> {
           ),
         ),
         const SizedBox(height: 24),
-        ...question.options.map((opt) => _buildOption(opt, selected == opt.id)).toList(),
-        const Spacer(),
+        ...question.options.map((opt) => _buildOption(opt, selected == opt.id)),
+        if (!isDesktop) const Spacer(),
+        const SizedBox(height: 12),
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
@@ -149,10 +182,15 @@ class _QuizScreenState extends State<QuizScreen> {
                 ? const SizedBox(
                     height: 20,
                     width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
                   )
                 : Text(
-                    _currentIndex == _quiz!.questions.length - 1 ? 'Enviar' : 'Continuar',
+                    _currentIndex == _quiz!.questions.length - 1
+                        ? 'Enviar'
+                        : 'Continuar',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -198,25 +236,18 @@ class _QuizScreenState extends State<QuizScreen> {
             gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                Color(0xFFF59E0B),
-                Color(0xFFEA580C),
-              ],
+              colors: [Color(0xFFF59E0B), Color(0xFFEA580C)],
             ),
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: AppColors.moduleAmber.withOpacity(0.3),
+                color: AppColors.moduleAmber.withValues(alpha: 0.3),
                 blurRadius: 20,
                 offset: const Offset(0, 10),
               ),
             ],
           ),
-          child: const Icon(
-            Icons.emoji_events,
-            color: Colors.white,
-            size: 48,
-          ),
+          child: const Icon(Icons.emoji_events, color: Colors.white, size: 48),
         ),
         const SizedBox(height: 20),
         const Text(
@@ -275,7 +306,9 @@ class _QuizScreenState extends State<QuizScreen> {
             value: progress,
             minHeight: 12,
             backgroundColor: AppColors.bgGray100,
-            valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryBlue),
+            valueColor: const AlwaysStoppedAnimation<Color>(
+              AppColors.primaryBlue,
+            ),
           ),
         ),
       ],
@@ -311,7 +344,9 @@ class _QuizScreenState extends State<QuizScreen> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: selected ? AppColors.primaryBlue : AppColors.borderGray200,
+                    color: selected
+                        ? AppColors.primaryBlue
+                        : AppColors.borderGray200,
                     width: 2,
                   ),
                   color: selected ? AppColors.primaryBlue : Colors.transparent,
@@ -327,7 +362,9 @@ class _QuizScreenState extends State<QuizScreen> {
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                    color: selected ? AppColors.primaryBlue : AppColors.textGray800,
+                    color: selected
+                        ? AppColors.primaryBlue
+                        : AppColors.textGray800,
                   ),
                 ),
               ),
@@ -360,18 +397,12 @@ class _QuizScreenState extends State<QuizScreen> {
         const SizedBox(height: 8),
         Text(
           'Puntaje: ${_result?.score ?? 0}%',
-          style: const TextStyle(
-            fontSize: 16,
-            color: AppColors.textGray700,
-          ),
+          style: const TextStyle(fontSize: 16, color: AppColors.textGray700),
         ),
         const SizedBox(height: 4),
         Text(
           'Respuestas correctas: ${_result?.correctAnswers ?? 0}/${_result?.totalQuestions ?? 0}',
-          style: const TextStyle(
-            fontSize: 14,
-            color: AppColors.textGray600,
-          ),
+          style: const TextStyle(fontSize: 14, color: AppColors.textGray600),
         ),
         const SizedBox(height: 24),
         ElevatedButton(
@@ -379,17 +410,112 @@ class _QuizScreenState extends State<QuizScreen> {
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.primaryBlue,
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
           child: const Text(
             'Volver',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildDesktopSidebar() {
+    if (_loading || _quiz == null) {
+      return const AppLoadingView(label: 'Cargando evaluacion');
+    }
+
+    final total = _quiz!.questions.length;
+    final answered = _answers.length;
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.borderGray200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _quiz!.moduleTitle,
+            style: const TextStyle(
+              color: AppColors.textGray900,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Respondidas: $answered / $total',
+            style: const TextStyle(color: AppColors.textGray600),
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: List.generate(total, (index) {
+              final question = _quiz!.questions[index];
+              final isCurrent = index == _currentIndex;
+              final isAnswered = _answers.containsKey(question.id);
+              return InkWell(
+                onTap: () {
+                  setState(() => _currentIndex = index);
+                },
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: isCurrent
+                        ? AppColors.primaryBlue
+                        : isAnswered
+                        ? AppColors.bgBlue50
+                        : AppColors.bgGray100,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: isCurrent
+                          ? AppColors.primaryBlue
+                          : AppColors.borderGray200,
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '${index + 1}',
+                      style: TextStyle(
+                        color: isCurrent
+                            ? Colors.white
+                            : isAnswered
+                            ? AppColors.primaryBlue
+                            : AppColors.textGray600,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+          const SizedBox(height: 20),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.bgAmber50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.borderAmber300),
+            ),
+            child: const Text(
+              'Usa este panel para navegar por preguntas sin perder contexto del quiz.',
+              style: TextStyle(color: AppColors.textGray700, height: 1.4),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

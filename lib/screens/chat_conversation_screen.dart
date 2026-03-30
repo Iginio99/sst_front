@@ -8,11 +8,13 @@ import '../models/chat.dart';
 import '../services/chat_service.dart';
 import '../services/session_service.dart';
 import '../utils/colors.dart';
+import '../utils/responsive_breakpoints.dart';
+import '../widgets/desktop_content_scaffold.dart';
 
 class ChatConversationScreen extends StatefulWidget {
   final ChatContact contact;
 
-  const ChatConversationScreen({Key? key, required this.contact}) : super(key: key);
+  const ChatConversationScreen({super.key, required this.contact});
 
   @override
   State<ChatConversationScreen> createState() => _ChatConversationScreenState();
@@ -45,7 +47,9 @@ class _ChatConversationScreenState extends State<ChatConversationScreen> {
     _loadHistory();
     _connectSocket();
     _startPollingFallback();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom(animate: false));
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _scrollToBottom(animate: false),
+    );
   }
 
   @override
@@ -66,14 +70,18 @@ class _ChatConversationScreenState extends State<ChatConversationScreen> {
       setState(() {
         _messages.clear();
         _messages.addAll(history);
-        _messageIds.addAll(history.where((m) => m.id != null).map((m) => m.id!));
+        _messageIds.addAll(
+          history.where((m) => m.id != null).map((m) => m.id!),
+        );
       });
       debugPrint('[chat] history loaded count=${history.length}');
       _scrollToBottom(animate: false);
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No se pudo cargar el historial de mensajes')),
+        const SnackBar(
+          content: Text('No se pudo cargar el historial de mensajes'),
+        ),
       );
     }
   }
@@ -93,7 +101,9 @@ class _ChatConversationScreenState extends State<ChatConversationScreen> {
       return;
     }
 
-    debugPrint('[chat] connect user=${_currentUserId} contact=${widget.contact.id}');
+    debugPrint(
+      '[chat] connect user=$_currentUserId contact=${widget.contact.id}',
+    );
     _channel?.sink.close();
     _socketSub?.cancel();
     _channel = _chatService.connectSocket(token: token);
@@ -187,8 +197,11 @@ class _ChatConversationScreenState extends State<ChatConversationScreen> {
     final currentUserId = _currentUserId;
     if (currentUserId == null) return;
 
-    final isConversationMatch = (message.senderId == widget.contact.id && message.recipientId == currentUserId) ||
-        (message.senderId == currentUserId && message.recipientId == widget.contact.id);
+    final isConversationMatch =
+        (message.senderId == widget.contact.id &&
+            message.recipientId == currentUserId) ||
+        (message.senderId == currentUserId &&
+            message.recipientId == widget.contact.id);
     if (!isConversationMatch) {
       debugPrint(
         '[chat] message ignored for chat contact=${widget.contact.id} current=$currentUserId '
@@ -197,7 +210,8 @@ class _ChatConversationScreenState extends State<ChatConversationScreen> {
       return;
     }
 
-    if (message.clientMessageId != null && _pendingIndexes.containsKey(message.clientMessageId)) {
+    if (message.clientMessageId != null &&
+        _pendingIndexes.containsKey(message.clientMessageId)) {
       final index = _pendingIndexes.remove(message.clientMessageId);
       if (index != null && index >= 0 && index < _messages.length) {
         setState(() {
@@ -344,6 +358,7 @@ class _ChatConversationScreenState extends State<ChatConversationScreen> {
       body: LayoutBuilder(
         builder: (context, constraints) {
           final isWide = constraints.maxWidth >= 1000;
+          final isDesktop = ResponsiveBreakpoints.isDesktop(context);
           final contentWidth = isWide ? 820.0 : double.infinity;
           final sidePadding = isWide ? 24.0 : 16.0;
           final maxBubbleWidth = isWide ? 440.0 : constraints.maxWidth * 0.7;
@@ -358,22 +373,20 @@ class _ChatConversationScreenState extends State<ChatConversationScreen> {
                   child: Center(
                     child: ConstrainedBox(
                       constraints: BoxConstraints(maxWidth: contentWidth),
-                      child: _messages.isEmpty
-                          ? const Center(
-                              child: Text(
-                                'Inicia la conversacion enviando un mensaje.',
-                                style: TextStyle(color: AppColors.textGray700),
+                      child: isDesktop
+                          ? DesktopContentScaffold(
+                              padding: const EdgeInsets.all(20),
+                              sidePanel: _ConversationSidePanel(
+                                contact: widget.contact,
+                              ),
+                              child: _buildMessagesView(
+                                sidePadding: 0,
+                                maxBubbleWidth: maxBubbleWidth,
                               ),
                             )
-                          : ListView.builder(
-                              controller: _scrollController,
-                              padding: EdgeInsets.fromLTRB(sidePadding, 18, sidePadding, 24),
-                              itemCount: _messages.length,
-                              itemBuilder: (context, index) {
-                                final message = _messages[index];
-                                final isMine = message.senderId == _currentUserId;
-                                return _buildMessageBubble(message, isMine, maxBubbleWidth);
-                              },
+                          : _buildMessagesView(
+                              sidePadding: sidePadding,
+                              maxBubbleWidth: maxBubbleWidth,
                             ),
                     ),
                   ),
@@ -387,17 +400,37 @@ class _ChatConversationScreenState extends State<ChatConversationScreen> {
     );
   }
 
+  Widget _buildMessagesView({
+    required double sidePadding,
+    required double maxBubbleWidth,
+  }) {
+    if (_messages.isEmpty) {
+      return const Center(
+        child: Text(
+          'Inicia la conversacion enviando un mensaje.',
+          style: TextStyle(color: AppColors.textGray700),
+        ),
+      );
+    }
+    return ListView.builder(
+      controller: _scrollController,
+      padding: EdgeInsets.fromLTRB(sidePadding, 18, sidePadding, 24),
+      itemCount: _messages.length,
+      itemBuilder: (context, index) {
+        final message = _messages[index];
+        final isMine = message.senderId == _currentUserId;
+        return _buildMessageBubble(message, isMine, maxBubbleWidth);
+      },
+    );
+  }
+
   Widget _buildHeader() {
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF0F172A),
-            Color(0xFF1E40AF),
-            Color(0xFF0E7490),
-          ],
+          colors: [Color(0xFF0F172A), Color(0xFF1E40AF), Color(0xFF0E7490)],
         ),
       ),
       child: SafeArea(
@@ -415,8 +448,13 @@ class _ChatConversationScreenState extends State<ChatConversationScreen> {
                 radius: 20,
                 backgroundColor: const Color(0xFF1E40AF),
                 child: Text(
-                  widget.contact.name.isNotEmpty ? widget.contact.name[0].toUpperCase() : '?',
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  widget.contact.name.isNotEmpty
+                      ? widget.contact.name[0].toUpperCase()
+                      : '?',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -450,8 +488,14 @@ class _ChatConversationScreenState extends State<ChatConversationScreen> {
     );
   }
 
-  Widget _buildMessageBubble(ChatMessage message, bool isMine, double maxWidth) {
-    final bubbleColor = isMine ? const Color(0xFF2563EB) : const Color(0xFFF8FAFC);
+  Widget _buildMessageBubble(
+    ChatMessage message,
+    bool isMine,
+    double maxWidth,
+  ) {
+    final bubbleColor = isMine
+        ? const Color(0xFF2563EB)
+        : const Color(0xFFF8FAFC);
     final textColor = isMine ? Colors.white : const Color(0xFF0F172A);
     final align = isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start;
 
@@ -466,10 +510,12 @@ class _ChatConversationScreenState extends State<ChatConversationScreen> {
             decoration: BoxDecoration(
               color: bubbleColor,
               borderRadius: BorderRadius.circular(14),
-              border: isMine ? null : Border.all(color: const Color(0xFFE2E8F0)),
+              border: isMine
+                  ? null
+                  : Border.all(color: const Color(0xFFE2E8F0)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.06),
+                  color: Colors.black.withValues(alpha: 0.06),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -490,7 +536,10 @@ class _ChatConversationScreenState extends State<ChatConversationScreen> {
     );
   }
 
-  Widget _buildComposer({required double maxWidth, required double sidePadding}) {
+  Widget _buildComposer({
+    required double maxWidth,
+    required double sidePadding,
+  }) {
     return Container(
       padding: EdgeInsets.fromLTRB(sidePadding, 10, sidePadding, 20),
       decoration: BoxDecoration(
@@ -517,7 +566,10 @@ class _ChatConversationScreenState extends State<ChatConversationScreen> {
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none,
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
                     ),
                   ),
                 ),
@@ -526,8 +578,13 @@ class _ChatConversationScreenState extends State<ChatConversationScreen> {
                   onPressed: _sendMessage,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1D4ED8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                   ),
                   child: const Icon(Icons.send, color: Colors.white, size: 18),
                 ),
@@ -543,5 +600,97 @@ class _ChatConversationScreenState extends State<ChatConversationScreen> {
     final hour = value.hour.toString().padLeft(2, '0');
     final minute = value.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
+  }
+}
+
+class _ConversationSidePanel extends StatelessWidget {
+  const _ConversationSidePanel({required this.contact});
+
+  final ChatContact contact;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF0F172A), Color(0xFF1E40AF)],
+            ),
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                contact.name,
+                style: const TextStyle(
+                  color: AppColors.textOnDark,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                contact.email,
+                style: const TextStyle(color: AppColors.textOnDarkMuted),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.borderGray200),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Roles',
+                style: TextStyle(
+                  color: AppColors.textGray900,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: contact.roles
+                    .map(
+                      (role) => Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.bgGray100,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          role,
+                          style: const TextStyle(
+                            color: AppColors.textGray700,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 }

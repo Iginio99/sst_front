@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import '../models/module.dart';
+import '../services/session_service.dart';
 import '../services/training_service.dart';
 import '../utils/colors.dart';
+import '../widgets/app_hero_header.dart';
+import '../widgets/app_state_views.dart';
+import '../widgets/access_denied_view.dart';
 import 'lessons_screen.dart';
 
 class ModulesScreen extends StatefulWidget {
   final Module? selectedModule;
 
-  const ModulesScreen({Key? key, this.selectedModule}) : super(key: key);
+  const ModulesScreen({super.key, this.selectedModule});
 
   @override
   State<ModulesScreen> createState() => _ModulesScreenState();
@@ -25,6 +29,14 @@ class _ModulesScreenState extends State<ModulesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final access = SessionManager.instance.access;
+    if (!access.canStudy) {
+      return const AccessDeniedView(
+        title: 'Vista no disponible',
+        message:
+            'Esta pantalla solo aplica para usuarios que cursan capacitaciones.',
+      );
+    }
     final isWide = MediaQuery.of(context).size.width >= 1000;
     final contentWidth = isWide ? 920.0 : double.infinity;
     final sidePadding = isWide ? 24.0 : 16.0;
@@ -43,24 +55,37 @@ class _ModulesScreenState extends State<ModulesScreen> {
                     future: _modulesFuture,
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
+                        return const AppLoadingView(label: 'Cargando modulos');
                       }
                       if (snapshot.hasError) {
-                        return Center(child: Text('Error al cargar modulos: ${snapshot.error}'));
+                        return AppMessageCard(
+                          title: 'No se pudo cargar la ruta',
+                          message: 'Error al cargar modulos: ${snapshot.error}',
+                          icon: Icons.menu_book_outlined,
+                          iconColor: AppColors.moduleOrange,
+                        );
                       }
-                      final modules = snapshot.data ?? Module.getSampleData();
+                      final modules = snapshot.data ?? const <Module>[];
                       if (modules.isEmpty) {
-                        return const Center(child: Text('No tienes modulos asignados aun.'));
+                        return _buildEmptyState(
+                          title: 'Sin modulos disponibles',
+                          message:
+                              'No tienes modulos asignados o no se pudieron cargar desde la API.',
+                        );
                       }
                       return SingleChildScrollView(
-                        padding: EdgeInsets.symmetric(horizontal: sidePadding, vertical: 20),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: sidePadding,
+                          vertical: 20,
+                        ),
                         child: Column(
                           children: modules
                               .map(
                                 (module) => _buildModuleCard(
                                   context,
                                   module,
-                                  isHighlighted: widget.selectedModule?.id == module.id,
+                                  isHighlighted:
+                                      widget.selectedModule?.id == module.id,
                                 ),
                               )
                               .toList(),
@@ -78,76 +103,33 @@ class _ModulesScreenState extends State<ModulesScreen> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF1E3A8A),
-            Color(0xFF2563EB),
-            Color(0xFF0E7490),
-          ],
-        ),
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              InkWell(
-                onTap: () => Navigator.pop(context),
-                child: Row(
-                  children: const [
-                    Icon(Icons.arrow_back, color: Colors.white, size: 20),
-                    SizedBox(width: 8),
-                    Text(
-                      'Volver',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Capacitaciones',
-                style: TextStyle(
-                  color: AppColors.textOnDark,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'Completa los modulos y aprueba las evaluaciones',
-                style: TextStyle(
-                  color: AppColors.textOnDarkMuted,
-                  fontSize: 14,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    return AppHeroHeader(
+      title: 'Capacitaciones',
+      subtitle: 'Completa los modulos y aprueba las evaluaciones',
+      backLabel: 'Volver',
+      onBack: () => Navigator.pop(context),
     );
   }
 
-  Widget _buildModuleCard(BuildContext context, Module module, {bool isHighlighted = false}) {
+  Widget _buildModuleCard(
+    BuildContext context,
+    Module module, {
+    bool isHighlighted = false,
+  }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isHighlighted ? AppColors.primaryBlue : AppColors.borderGray200, width: 2),
+        border: Border.all(
+          color: isHighlighted
+              ? AppColors.primaryBlue
+              : AppColors.borderGray200,
+          width: 2,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -179,7 +161,7 @@ class _ModulesScreenState extends State<ModulesScreen> {
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: module.color.withOpacity(0.3),
+                          color: module.color.withValues(alpha: 0.3),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
@@ -188,7 +170,10 @@ class _ModulesScreenState extends State<ModulesScreen> {
                     child: Center(
                       child: Text(
                         module.icon,
-                        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ),
@@ -225,7 +210,8 @@ class _ModulesScreenState extends State<ModulesScreen> {
                       else
                         _badge('Recomendada', AppColors.primaryBlue),
                       const SizedBox(height: 8),
-                      if (module.quizCompleted) _badge('Quiz listo', AppColors.statusGreen),
+                      if (module.quizCompleted)
+                        _badge('Quiz listo', AppColors.statusGreen),
                     ],
                   ),
                 ],
@@ -260,7 +246,9 @@ class _ModulesScreenState extends State<ModulesScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    module.dueToChecklist ? 'Requerido por checklist' : 'Libre avance',
+                    module.dueToChecklist
+                        ? 'Requerido por checklist'
+                        : 'Libre avance',
                     style: const TextStyle(
                       fontSize: 12,
                       color: AppColors.textGray600,
@@ -296,9 +284,9 @@ class _ModulesScreenState extends State<ModulesScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Text(
         text,
@@ -306,6 +294,52 @@ class _ModulesScreenState extends State<ModulesScreen> {
           fontSize: 11,
           fontWeight: FontWeight.bold,
           color: color,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState({required String title, required String message}) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.borderGray200),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.menu_book_outlined,
+                size: 40,
+                color: AppColors.textGray500,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textGray900,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textGray600,
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

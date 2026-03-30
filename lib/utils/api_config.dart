@@ -5,6 +5,10 @@ const String _configuredApiBaseUrl = String.fromEnvironment(
   defaultValue: 'http://localhost:8010',
 );
 const String _configuredWsBaseUrl = String.fromEnvironment('WS_BASE_URL');
+const String appEnvironment = String.fromEnvironment(
+  'APP_ENV',
+  defaultValue: 'development',
+);
 
 final String apiBaseUrl = _configuredApiBaseUrl.endsWith('/')
     ? _configuredApiBaseUrl.substring(0, _configuredApiBaseUrl.length - 1)
@@ -17,3 +21,5 @@ final String wsBaseUrl = _configuredWsBaseUrl.isNotEmpty
     : apiBaseUrl.startsWith('https://')
         ? apiBaseUrl.replaceFirst('https://', 'wss://')
         : apiBaseUrl.replaceFirst('http://', 'ws://');
+
+bool get allowSampleFallbacks => appEnvironment == 'development';

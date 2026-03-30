@@ -3,10 +3,14 @@ import 'package:flutter/material.dart';
 import '../models/chat.dart';
 import '../services/chat_service.dart';
 import '../utils/colors.dart';
+import '../utils/responsive_breakpoints.dart';
+import '../widgets/app_hero_header.dart';
+import '../widgets/app_state_views.dart';
+import '../widgets/desktop_content_scaffold.dart';
 import 'chat_conversation_screen.dart';
 
 class ChatListScreen extends StatefulWidget {
-  const ChatListScreen({Key? key}) : super(key: key);
+  const ChatListScreen({super.key});
 
   @override
   State<ChatListScreen> createState() => _ChatListScreenState();
@@ -28,6 +32,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
       body: LayoutBuilder(
         builder: (context, constraints) {
           final isWide = constraints.maxWidth >= 900;
+          final isDesktop = ResponsiveBreakpoints.isDesktop(context);
           final contentWidth = isWide ? 760.0 : double.infinity;
           final sidePadding = isWide ? 24.0 : 16.0;
 
@@ -44,27 +49,56 @@ class _ChatListScreenState extends State<ChatListScreen> {
                       child: FutureBuilder<List<ChatContact>>(
                         future: _contactsFuture,
                         builder: (context, snapshot) {
-                          if (snapshot.connectionState == ConnectionState.waiting) {
-                            return const Center(child: CircularProgressIndicator());
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const AppLoadingView(
+                              label: 'Cargando contactos',
+                            );
                           }
                           if (snapshot.hasError) {
-                            return Center(
-                              child: Text('Error al cargar contactos: ${snapshot.error}'),
+                            return AppMessageCard(
+                              title: 'No se pudo cargar el chat',
+                              message:
+                                  'Error al cargar contactos: ${snapshot.error}',
+                              icon: Icons.forum_outlined,
+                              iconColor: AppColors.moduleOrange,
                             );
                           }
                           final contacts = snapshot.data ?? [];
                           if (contacts.isEmpty) {
-                            return const Center(
-                              child: Text(
-                                'No hay contactos disponibles para tu rol.',
-                                style: TextStyle(color: AppColors.textGray700),
+                            return const AppMessageCard(
+                              title: 'Sin contactos disponibles',
+                              message:
+                                  'No hay contactos habilitados para tu rol por ahora.',
+                              icon: Icons.people_outline,
+                            );
+                          }
+                          if (isDesktop) {
+                            return DesktopContentScaffold(
+                              padding: const EdgeInsets.all(20),
+                              sidePanel: _ChatListSidePanel(
+                                contactsCount: contacts.length,
+                              ),
+                              child: ListView.separated(
+                                padding: EdgeInsets.zero,
+                                itemCount: contacts.length,
+                                separatorBuilder: (_, separatorIndex) =>
+                                    const SizedBox(height: 12),
+                                itemBuilder: (context, index) {
+                                  final contact = contacts[index];
+                                  return _buildContactCard(context, contact);
+                                },
                               ),
                             );
                           }
                           return ListView.separated(
-                            padding: EdgeInsets.symmetric(horizontal: sidePadding, vertical: 20),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: sidePadding,
+                              vertical: 20,
+                            ),
                             itemCount: contacts.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 12),
+                            separatorBuilder: (_, separatorIndex) =>
+                                const SizedBox(height: 12),
                             itemBuilder: (context, index) {
                               final contact = contacts[index];
                               return _buildContactCard(context, contact);
@@ -84,46 +118,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
   }
 
   Widget _buildHeader() {
-    return Container(
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF1E3A8A),
-            Color(0xFF2563EB),
-            Color(0xFF0E7490),
-          ],
-        ),
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              Text(
-                'Mensajes',
-                style: TextStyle(
-                  color: AppColors.textOnDark,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              SizedBox(height: 6),
-              Text(
-                'Conversaciones habilitadas segun tu rol',
-                style: TextStyle(
-                  color: AppColors.textOnDarkMuted,
-                  fontSize: 13,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    return const AppHeroHeader(
+      title: 'Mensajes',
+      subtitle: 'Conversaciones habilitadas segun tu rol',
     );
   }
 
@@ -145,7 +142,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
           border: Border.all(color: AppColors.borderGray200),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -192,7 +189,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
                     children: contact.roles
                         .map(
                           (role) => Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: AppColors.bgGray100,
                               borderRadius: BorderRadius.circular(12),
@@ -216,6 +216,76 @@ class _ChatListScreenState extends State<ChatListScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ChatListSidePanel extends StatelessWidget {
+  const _ChatListSidePanel({required this.contactsCount});
+
+  final int contactsCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF0F172A), Color(0xFF1E40AF)],
+            ),
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Conversaciones',
+                style: TextStyle(
+                  color: AppColors.textOnDark,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Selecciona un contacto para abrir la conversacion.',
+                style: TextStyle(color: AppColors.textOnDarkMuted, height: 1.4),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.borderGray200),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Contactos visibles',
+                style: TextStyle(color: AppColors.textGray600),
+              ),
+              Text(
+                '$contactsCount',
+                style: const TextStyle(
+                  color: AppColors.textGray900,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

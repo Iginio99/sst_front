@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'models/auth.dart';
-import 'screens/dashboard_screen.dart';
+import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'services/session_service.dart';
 
@@ -12,7 +12,7 @@ void main() async {
 }
 
 class SSTApp extends StatelessWidget {
-  const SSTApp({Key? key}) : super(key: key);
+  const SSTApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +35,7 @@ class SSTApp extends StatelessWidget {
           if (user == null) {
             return const LoginScreen();
           }
-          return const DashboardScreen();
+          return const HomeScreen();
         },
       ),
     );

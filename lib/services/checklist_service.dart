@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import '../models/checklist_item.dart';
 import '../models/checklist_section.dart';
 import 'api_client.dart';
+import '../utils/api_config.dart';
 
 class ChecklistService {
   ChecklistService({Dio? dio}) : _dio = dio ?? ApiClient().dio;
@@ -20,10 +21,16 @@ class ChecklistService {
       if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
         rethrow;
       }
-      return ChecklistSection.getSampleData();
+      if (allowSampleFallbacks) {
+        return ChecklistSection.getSampleData();
+      }
+      return [];
     } catch (_) {
       onError?.call();
-      return ChecklistSection.getSampleData();
+      if (allowSampleFallbacks) {
+        return ChecklistSection.getSampleData();
+      }
+      return [];
     }
   }
 
@@ -41,18 +48,44 @@ class ChecklistService {
       if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
         rethrow;
       }
-      final section = ChecklistSection.getSampleData().firstWhere(
-        (s) => s.id == sectionId,
-        orElse: () => ChecklistSection.getSampleData().first,
+      if (allowSampleFallbacks) {
+        final section = ChecklistSection.getSampleData().firstWhere(
+          (s) => s.id == sectionId,
+          orElse: () => ChecklistSection.getSampleData().first,
+        );
+        return ChecklistDetailResponse(section: section, items: ChecklistItem.getSampleData());
+      }
+      return ChecklistDetailResponse(
+        section: ChecklistSection(
+          id: sectionId,
+          title: 'Seccion',
+          itemsCompleted: 0,
+          itemsTotal: 0,
+          percentage: 0,
+          status: 'pendiente',
+        ),
+        items: const [],
       );
-      return ChecklistDetailResponse(section: section, items: ChecklistItem.getSampleData());
     } catch (_) {
       onError?.call();
-      final section = ChecklistSection.getSampleData().firstWhere(
-        (s) => s.id == sectionId,
-        orElse: () => ChecklistSection.getSampleData().first,
+      if (allowSampleFallbacks) {
+        final section = ChecklistSection.getSampleData().firstWhere(
+          (s) => s.id == sectionId,
+          orElse: () => ChecklistSection.getSampleData().first,
+        );
+        return ChecklistDetailResponse(section: section, items: ChecklistItem.getSampleData());
+      }
+      return ChecklistDetailResponse(
+        section: ChecklistSection(
+          id: sectionId,
+          title: 'Seccion',
+          itemsCompleted: 0,
+          itemsTotal: 0,
+          percentage: 0,
+          status: 'pendiente',
+        ),
+        items: const [],
       );
-      return ChecklistDetailResponse(section: section, items: ChecklistItem.getSampleData());
     }
   }
 }
